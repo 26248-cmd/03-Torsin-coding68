@@ -1,0 +1,255 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Smart Energy Manager v4.1 - Dual Path Achievement</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <style>
+        body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
+        .card { background: #1e293b; border-radius: 20px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
+        .progress-bar { transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
+        .achievement-card { transition: all 0.3s ease; filter: grayscale(100%); opacity: 0.5; }
+        .achievement-unlocked { filter: grayscale(0%); opacity: 1; transform: scale(1.05); border-color: #fbbf24; }
+        
+        /* สไตล์สำหรับแท็บ */
+        .tab-btn { transition: all 0.3s ease; }
+        .tab-active-good { border-bottom: 4px solid #10b981; color: #10b981; }
+        .tab-active-bad { border-bottom: 4px solid #ef4444; color: #ef4444; }
+        
+        /* Animation สำหรับปลดล็อค */
+        @keyframes unlock-glow {
+            0% { box-shadow: 0 0 0px #fbbf24; }
+            50% { box-shadow: 0 0 20px #fbbf24; }
+            100% { box-shadow: 0 0 0px #fbbf24; }
+        }
+        .animate-unlock { animation: unlock-glow 2s ease-in-out; }
+    </style>
+</head>
+<body class="p-4 md:p-8">
+    <div class="max-w-5xl mx-auto">
+        <!-- Header & Stats -->
+        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+            <div>
+                <h1 class="text-3xl font-bold text-blue-400">⚡ Smart Energy Pro</h1>
+                <p id="status-text" class="text-sm text-gray-400">สถานะ: <span class="text-green-400">● ระบบพร้อมทำงาน</span></p>
+            </div>
+            <div class="flex gap-4">
+                <div class="card p-3 px-6 text-center">
+                    <p class="text-xs text-gray-400">Eco Points</p>
+                    <p id="eco-points" class="text-xl font-bold text-yellow-400">0</p>
+                </div>
+                <div class="card p-3 px-6 text-center">
+                    <p class="text-xs text-gray-400">เงินออมสะสม</p>
+                    <p id="total-savings" class="text-xl font-bold text-green-400">0.00 ฿</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+            <!-- Left: Inputs -->
+            <div class="lg:col-span-1 space-y-6">
+                <div class="card p-6">
+                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">⚙️ ตั้งค่าวันนี้</h2>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">เป้าหมาย (kWh)</label>
+                            <input type="number" id="limit-input" value="20" class="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg outline-none focus:border-blue-500 transition text-white">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-gray-400 mb-1">ใช้จริง (kWh)</label>
+                            <input type="number" id="used-input" value="0" class="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg outline-none focus:border-blue-500 transition text-white">
+                        </div>
+                        <button onclick="manualSave()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition transform active:scale-95">
+                            บันทึกข้อมูล
+                        </button>
+                    </div>
+                </div>
+
+                <div class="card p-6 border-l-4 border-blue-500">
+                    <h2 class="text-lg font-semibold mb-2 text-blue-400">💡 เคล็ดลับวันนี้</h2>
+                    <p id="tip-text" class="text-sm text-gray-300 italic">"ความพยายามในวันแรก คือก้าวแรกสู่แสงสว่าง"</p>
+                </div>
+            </div>
+
+            <!-- Right: Achievements & Analysis -->
+            <div class="lg:col-span-2 space-y-6">
+                <!-- Analysis Panel -->
+                <div id="analysis-box" class="card p-6 hidden border-t-4 border-blue-500">
+                    <div class="flex justify-between items-end mb-2">
+                        <span id="analysis-title" class="text-sm font-semibold">การใช้พลังงาน</span>
+                        <span id="analysis-percent" class="text-xl font-bold text-blue-400">0%</span>
+                    </div>
+                    <div class="w-full bg-slate-700 rounded-full h-3 mb-4">
+                        <div id="bar-fill" class="progress-bar h-3 rounded-full bg-blue-500" style="width: 0%"></div>
+                    </div>
+                    <p id="analysis-text" class="text-sm text-gray-300"></p>
+                </div>
+
+                <!-- Achievements Card -->
+                <div class="card p-6 min-h-[420px]">
+                    <div class="flex gap-8 border-b border-slate-700 mb-6">
+                        <button onclick="switchTab('good')" id="tab-good" class="tab-btn pb-2 font-semibold tab-active-good">
+                            🌟 วิถีผู้พิทักษ์
+                        </button>
+                        <button onclick="switchTab('bad')" id="tab-bad" class="tab-btn pb-2 font-semibold text-gray-500 hover:text-red-400">
+                            🌪️ รอยร้าวในมิติพลังงาน
+                        </button>
+                    </div>
+
+                    <!-- Achievement Grid: Good (Guardian Path) -->
+                    <div id="grid-good" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <!-- Items injected here -->
+                    </div>
+
+                    <!-- Achievement Grid: Bad (Energy Rift) -->
+                    <div id="grid-bad" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        <!-- Items injected here -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification Toast -->
+    <div id="toast" class="fixed bottom-8 right-8 bg-yellow-500 text-slate-900 p-4 rounded-2xl shadow-2xl font-bold transform translate-y-32 transition duration-500 flex items-center gap-3 z-50">
+        <span class="text-2xl">🏆</span>
+        <div>
+            <p class="text-[10px] uppercase opacity-70 leading-none">Achievement Unlocked!</p>
+            <p id="toast-name" class="text-sm">ชื่อรางวัล</p>
+        </div>
+    </div>
+
+    <script>
+        const MIN_UNIT_PRICE = 3.99;
+        let historyData = [];
+        let ecoPoints = 0;
+        let totalSavings = 0;
+
+        // รายชื่อ Achievement ตามที่น้องเลือก
+        const achievements = {
+            good: [
+                { id: 'g1', name: "จุดกำเนิดแสงศักดิ์สิทธิ์", desc: "เริ่มบันทึกข้อมูลครั้งแรก", icon: "✨", unlocked: false },
+                { id: 'g2', name: "ผู้บัญชาการสายฟ้า", desc: "ประหยัดไฟสำเร็จ 3 ครั้งติด", icon: "⚡", unlocked: false },
+                { id: 'g3', name: "วิศวกรแห่งอนาคต", desc: "ใช้ไฟใกล้เคียงเป้าหมาย (±5%)", icon: "📐", unlocked: false },
+                { id: 'g4', name: "เกราะป้องกันโลก", desc: "ประหยัดเงินรวมครบ 100 บาท", icon: "🛡️", unlocked: false },
+                { id: 'g5', name: "หัวใจนิรันดร์", desc: "บันทึกข้อมูลครบ 7 รายการ", icon: "💎", unlocked: false }
+            ],
+            bad: [
+                { id: 'b1', name: "เสียงเรียกจากหลุมดำ", desc: "ใช้ไฟเกินเป้าหมายครั้งแรก", icon: "🕳️", unlocked: false },
+                { id: 'b2', name: "กระแสไฟที่ผิดเพี้ยน", desc: "ใช้ไฟเกินเป้าหมาย 2 ครั้งติด", icon: "⚠️", unlocked: false },
+                { id: 'b3', name: "บันทึกของผู้หลงทาง", desc: "ใช้ไฟเกินเป้าหมาย 2 เท่า", icon: "📖", unlocked: false },
+                { id: 'b4', name: "เงากลืนกินแสง", desc: "เสียเงินจากการใช้เกินรวม 50 บาท", icon: "🌑", unlocked: false },
+                { id: 'b5', name: "เศษเสี้ยวที่สูญสลาย", desc: "ใช้เกินเป้าหมายสะสม 10 ครั้ง", icon: "💨", unlocked: false }
+            ]
+        };
+
+        function initAchievements() {
+            renderGrid('good');
+            renderGrid('bad');
+        }
+
+        function renderGrid(type) {
+            const container = document.getElementById(`grid-${type}`);
+            container.innerHTML = achievements[type].map(ach => `
+                <div id="${ach.id}" class="achievement-card card p-4 flex flex-col items-center text-center border-2 border-transparent">
+                    <span class="text-3xl mb-2">${ach.icon}</span>
+                    <h3 class="text-xs font-bold text-white mb-1">${ach.name}</h3>
+                    <p class="text-[10px] text-gray-400 leading-tight">${ach.desc}</p>
+                </div>
+            `).join('');
+        }
+
+        function switchTab(type) {
+            document.getElementById('grid-good').classList.toggle('hidden', type !== 'good');
+            document.getElementById('grid-bad').classList.toggle('hidden', type !== 'bad');
+            
+            const btnGood = document.getElementById('tab-good');
+            const btnBad = document.getElementById('tab-bad');
+
+            if(type === 'good') {
+                btnGood.className = 'tab-btn pb-2 font-semibold tab-active-good';
+                btnBad.className = 'tab-btn pb-2 font-semibold text-gray-500 hover:text-red-400';
+            } else {
+                btnGood.className = 'tab-btn pb-2 font-semibold text-gray-500 hover:text-green-400';
+                btnBad.className = 'tab-btn pb-2 font-semibold tab-active-bad';
+            }
+        }
+
+        function manualSave() {
+            const limit = parseFloat(document.getElementById('limit-input').value);
+            const used = parseFloat(document.getElementById('used-input').value);
+            if(isNaN(limit) || isNaN(used)) return;
+
+            const diff = limit - used;
+            const money = diff * MIN_UNIT_PRICE;
+            const percent = (used / limit) * 100;
+            const record = { limit, used, money, percent };
+            
+            historyData.push(record);
+            updateDashboard(record);
+            checkAchievementsLogic(record);
+        }
+
+        function updateDashboard(data) {
+            totalSavings += data.money;
+            const ts = document.getElementById('total-savings');
+            ts.innerText = `${totalSavings.toFixed(2)} ฿`;
+            ts.className = totalSavings >= 0 ? "text-xl font-bold text-green-400" : "text-xl font-bold text-red-400";
+
+            const box = document.getElementById('analysis-box');
+            box.classList.remove('hidden');
+            document.getElementById('bar-fill').style.width = Math.min(data.percent, 100) + "%";
+            document.getElementById('analysis-percent').innerText = Math.round(data.percent) + "%";
+            document.getElementById('bar-fill').className = `progress-bar h-3 rounded-full ${data.percent > 100 ? 'bg-red-500' : 'bg-green-500'}`;
+            
+            document.getElementById('analysis-text').innerHTML = data.money >= 0 
+                ? `สำเร็จ! ประหยัดไปได้ <span class="text-green-400">${data.money.toFixed(2)} บาท</span>`
+                : `คำเตือน! ใช้เกินไป <span class="text-red-400">${Math.abs(data.money).toFixed(2)} บาท</span>`;
+        }
+
+        function checkAchievementsLogic(record) {
+            // ปลดล็อคอันแรกเสมอเมื่อเริ่ม
+            unlock('g1');
+
+            // เงื่อนไขหมวดไม่ดี
+            if(record.money < 0) unlock('b1');
+            if(record.used >= record.limit * 2) unlock('b3');
+            
+            // เงื่อนไขหมวดดี
+            if(historyData.length >= 3 && historyData.slice(-3).every(r => r.money >= 0)) unlock('g2');
+            if(totalSavings >= 100) unlock('g4');
+            if(historyData.length >= 7) unlock('g5');
+            
+            // วิศวกรแห่งอนาคต (ใช้ไฟต่างจากเป้าไม่เกิน 5%)
+            if(record.percent >= 95 && record.percent <= 105) unlock('g3');
+        }
+
+        function unlock(id) {
+            const allAch = [...achievements.good, ...achievements.bad];
+            const ach = allAch.find(a => a.id === id);
+            
+            if(ach && !ach.unlocked) {
+                ach.unlocked = true;
+                const el = document.getElementById(id);
+                if(el) {
+                    el.classList.add('achievement-unlocked', 'animate-unlock');
+                    ecoPoints += 100;
+                    document.getElementById('eco-points').innerText = ecoPoints;
+                    showToast(ach.name);
+                }
+            }
+        }
+
+        function showToast(name) {
+            const t = document.getElementById('toast');
+            document.getElementById('toast-name').innerText = name;
+            t.classList.remove('translate-y-32');
+            setTimeout(() => t.classList.add('translate-y-32'), 3000);
+        }
+
+        window.onload = initAchievements;
+    </script>
+</body>
+</html>
