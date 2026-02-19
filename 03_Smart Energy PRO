@@ -3,253 +3,427 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Smart Energy Manager v4.1 - Dual Path Achievement</title>
+    <title>Energy Optimizer Pro - Achievement Popup Edition</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Kanit:wght@300;400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Kanit', sans-serif; background-color: #0f172a; color: #f8fafc; }
-        .card { background: #1e293b; border-radius: 20px; border: 1px solid #334155; box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.5); }
-        .progress-bar { transition: width 0.8s cubic-bezier(0.34, 1.56, 0.64, 1); }
-        .achievement-card { transition: all 0.3s ease; filter: grayscale(100%); opacity: 0.5; }
-        .achievement-unlocked { filter: grayscale(0%); opacity: 1; transform: scale(1.05); border-color: #fbbf24; }
-        
-        /* สไตล์สำหรับแท็บ */
-        .tab-btn { transition: all 0.3s ease; }
-        .tab-active-good { border-bottom: 4px solid #10b981; color: #10b981; }
-        .tab-active-bad { border-bottom: 4px solid #ef4444; color: #ef4444; }
-        
-        /* Animation สำหรับปลดล็อค */
-        @keyframes unlock-glow {
-            0% { box-shadow: 0 0 0px #fbbf24; }
-            50% { box-shadow: 0 0 20px #fbbf24; }
-            100% { box-shadow: 0 0 0px #fbbf24; }
+        body {
+            font-family: 'Kanit', sans-serif;
+            background-color: #020617;
+            color: #f8fafc;
+            min-height: 100vh;
+            margin: 0;
+            overflow-x: hidden;
         }
-        .animate-unlock { animation: unlock-glow 2s ease-in-out; }
+
+        .glass-card {
+            background: rgba(15, 23, 42, 0.7);
+            backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+        }
+
+        /* Global Alert Animation */
+        #global-alert {
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%) translateY(-200%);
+            z-index: 10000;
+            width: 90%;
+            max-width: 400px;
+            transition: all 0.5s cubic-bezier(0.68, -0.55, 0.265, 1.55);
+        }
+
+        #global-alert.active {
+            transform: translateX(-50%) translateY(0);
+        }
+
+        /* Progress Sub Bars */
+        .progress-sub-bar {
+            height: 6px;
+            background: #1e293b;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-top: 8px;
+        }
+
+        .progress-fill-guard {
+            background: linear-gradient(90deg, #f59e0b, #fbbf24);
+            height: 100%;
+            transition: width 1s ease-out;
+        }
+
+        .progress-fill-rift {
+            background: linear-gradient(90deg, #8b5cf6, #d946ef);
+            height: 100%;
+            transition: width 1s ease-out;
+        }
+
+        /* Modals */
+        .modal-overlay {
+            position: fixed;
+            inset: 0;
+            background: rgba(0, 0, 0, 0.85);
+            backdrop-filter: blur(10px);
+            z-index: 9999;
+            display: none;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+
+        .stat-glow {
+            text-shadow: 0 0 20px rgba(6, 182, 212, 0.3);
+        }
+
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-track { background: transparent; }
+        ::-webkit-scrollbar-thumb { background: #1e293b; border-radius: 10px; }
     </style>
 </head>
 <body class="p-4 md:p-8">
-    <div class="max-w-5xl mx-auto">
-        <!-- Header & Stats -->
-        <div class="flex flex-col md:flex-row justify-between items-center mb-8 gap-4">
+
+    <!-- Global Alert UI -->
+    <div id="global-alert">
+        <div class="bg-slate-900 border-2 border-cyan-500 p-4 rounded-2xl flex items-center gap-4 shadow-2xl">
+            <span id="alert-icon" class="text-2xl">🔔</span>
             <div>
-                <h1 class="text-3xl font-bold text-blue-400">⚡ Smart Energy Pro</h1>
-                <p id="status-text" class="text-sm text-gray-400">สถานะ: <span class="text-green-400">● ระบบพร้อมทำงาน</span></p>
-            </div>
-            <div class="flex gap-4">
-                <div class="card p-3 px-6 text-center">
-                    <p class="text-xs text-gray-400">Eco Points</p>
-                    <p id="eco-points" class="text-xl font-bold text-yellow-400">0</p>
-                </div>
-                <div class="card p-3 px-6 text-center">
-                    <p class="text-xs text-gray-400">เงินออมสะสม</p>
-                    <p id="total-savings" class="text-xl font-bold text-green-400">0.00 ฿</p>
-                </div>
-            </div>
-        </div>
-
-        <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
-            <!-- Left: Inputs -->
-            <div class="lg:col-span-1 space-y-6">
-                <div class="card p-6">
-                    <h2 class="text-lg font-semibold mb-4 flex items-center gap-2">⚙️ ตั้งค่าวันนี้</h2>
-                    <div class="space-y-4">
-                        <div>
-                            <label class="block text-xs text-gray-400 mb-1">เป้าหมาย (kWh)</label>
-                            <input type="number" id="limit-input" value="20" class="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg outline-none focus:border-blue-500 transition text-white">
-                        </div>
-                        <div>
-                            <label class="block text-xs text-gray-400 mb-1">ใช้จริง (kWh)</label>
-                            <input type="number" id="used-input" value="0" class="w-full p-2 bg-slate-800 border border-slate-700 rounded-lg outline-none focus:border-blue-500 transition text-white">
-                        </div>
-                        <button onclick="manualSave()" class="w-full py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl shadow-lg transition transform active:scale-95">
-                            บันทึกข้อมูล
-                        </button>
-                    </div>
-                </div>
-
-                <div class="card p-6 border-l-4 border-blue-500">
-                    <h2 class="text-lg font-semibold mb-2 text-blue-400">💡 เคล็ดลับวันนี้</h2>
-                    <p id="tip-text" class="text-sm text-gray-300 italic">"ความพยายามในวันแรก คือก้าวแรกสู่แสงสว่าง"</p>
-                </div>
-            </div>
-
-            <!-- Right: Achievements & Analysis -->
-            <div class="lg:col-span-2 space-y-6">
-                <!-- Analysis Panel -->
-                <div id="analysis-box" class="card p-6 hidden border-t-4 border-blue-500">
-                    <div class="flex justify-between items-end mb-2">
-                        <span id="analysis-title" class="text-sm font-semibold">การใช้พลังงาน</span>
-                        <span id="analysis-percent" class="text-xl font-bold text-blue-400">0%</span>
-                    </div>
-                    <div class="w-full bg-slate-700 rounded-full h-3 mb-4">
-                        <div id="bar-fill" class="progress-bar h-3 rounded-full bg-blue-500" style="width: 0%"></div>
-                    </div>
-                    <p id="analysis-text" class="text-sm text-gray-300"></p>
-                </div>
-
-                <!-- Achievements Card -->
-                <div class="card p-6 min-h-[420px]">
-                    <div class="flex gap-8 border-b border-slate-700 mb-6">
-                        <button onclick="switchTab('good')" id="tab-good" class="tab-btn pb-2 font-semibold tab-active-good">
-                            🌟 วิถีผู้พิทักษ์
-                        </button>
-                        <button onclick="switchTab('bad')" id="tab-bad" class="tab-btn pb-2 font-semibold text-gray-500 hover:text-red-400">
-                            🌪️ รอยร้าวในมิติพลังงาน
-                        </button>
-                    </div>
-
-                    <!-- Achievement Grid: Good (Guardian Path) -->
-                    <div id="grid-good" class="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <!-- Items injected here -->
-                    </div>
-
-                    <!-- Achievement Grid: Bad (Energy Rift) -->
-                    <div id="grid-bad" class="hidden grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        <!-- Items injected here -->
-                    </div>
-                </div>
+                <p id="alert-msg" class="text-sm font-bold text-white">System Ready</p>
+                <p class="text-[10px] text-cyan-400 uppercase tracking-widest">Notification</p>
             </div>
         </div>
     </div>
 
-    <!-- Notification Toast -->
-    <div id="toast" class="fixed bottom-8 right-8 bg-yellow-500 text-slate-900 p-4 rounded-2xl shadow-2xl font-bold transform translate-y-32 transition duration-500 flex items-center gap-3 z-50">
-        <span class="text-2xl">🏆</span>
-        <div>
-            <p class="text-[10px] uppercase opacity-70 leading-none">Achievement Unlocked!</p>
-            <p id="toast-name" class="text-sm">ชื่อรางวัล</p>
+    <div class="max-w-[1200px] mx-auto">
+        <!-- Header -->
+        <header class="flex flex-col md:flex-row justify-between items-start md:items-center mb-10 gap-6">
+            <div>
+                <h1 class="text-3xl font-black tracking-tighter italic bg-clip-text text-transparent bg-gradient-to-r from-cyan-400 to-blue-500">
+                    ENERGY OPTIMIZER
+                </h1>
+                <p class="text-[10px] font-bold text-slate-500 uppercase tracking-[0.3em]">Guardian Protocol v1.6.0</p>
+            </div>
+
+            <div class="flex items-center gap-3">
+                <!-- Achievements Trigger Button -->
+                <button onclick="openModal('achievement-modal')" class="bg-slate-900 border border-amber-500/50 p-3 rounded-2xl hover:bg-slate-800 transition-all active:scale-95 shadow-lg group">
+                    <span class="group-hover:scale-125 inline-block transition-transform">🌟</span>
+                </button>
+                <button onclick="openModal('rank-modal')" class="bg-slate-900 border border-slate-800 p-3 rounded-2xl hover:bg-slate-800 transition-all active:scale-95 shadow-lg">🏆</button>
+                <button onclick="openModal('tiers-modal')" class="bg-slate-900 border border-slate-800 p-3 rounded-2xl hover:bg-slate-800 transition-all active:scale-95 shadow-lg">📊</button>
+                <button onclick="openModal('config-modal')" class="bg-slate-900 border border-slate-800 p-3 rounded-2xl hover:bg-slate-800 transition-all active:scale-95 shadow-lg">🔔</button>
+                
+                <div class="bg-slate-950 border border-slate-800 px-6 py-3 rounded-2xl text-cyan-400 font-mono text-lg shadow-inner min-w-[120px] text-center" id="clock">
+                    00:00:00
+                </div>
+            </div>
+        </header>
+
+        <!-- Main Grid -->
+        <div class="grid grid-cols-1 lg:grid-cols-2 gap-8">
+            
+            <!-- Left: Profile & Input -->
+            <div class="space-y-8">
+                <div class="glass-card p-6 border-l-4 border-cyan-500 relative overflow-hidden">
+                    <div class="flex items-center gap-5 mb-8">
+                        <div class="w-20 h-20 rounded-3xl bg-slate-800 border border-slate-700 p-1 shadow-xl">
+                            <img src="https://api.dicebear.com/7.x/pixel-art/svg?seed=EcoGuardian" class="w-full h-full object-cover rounded-2xl">
+                        </div>
+                        <div>
+                            <h2 class="text-2xl font-black italic">Eco_Pioneer</h2>
+                            <span id="u-rank" class="text-[10px] bg-cyan-500/10 text-cyan-400 px-3 py-1 rounded-full font-bold uppercase tracking-widest">Newbie</span>
+                        </div>
+                    </div>
+                    
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-[10px] font-black text-slate-400 uppercase">
+                            <span>Level <span id="u-lv" class="text-cyan-400">1</span></span>
+                            <span id="u-exp-txt">0/100 XP</span>
+                        </div>
+                        <div class="h-3 w-full bg-slate-800/50 rounded-full overflow-hidden p-[2px]">
+                            <div id="u-exp-bar" class="h-full bg-gradient-to-r from-cyan-500 to-blue-600 rounded-full transition-all duration-1000" style="width: 15%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="glass-card p-8">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase mb-6 tracking-[0.2em]">Input Control</h3>
+                    <div class="space-y-6">
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Target Limit (kWh)</label>
+                            <input type="number" id="in-limit" value="10" class="w-full bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-white text-xl outline-none focus:border-cyan-500 transition-all font-mono">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[10px] font-bold text-slate-400 uppercase ml-1">Current Usage (kWh)</label>
+                            <input type="number" id="in-usage" placeholder="0.00" class="w-full bg-slate-950/50 border border-slate-800 p-4 rounded-2xl text-white text-xl outline-none focus:border-cyan-500 transition-all font-mono">
+                        </div>
+                        <button onclick="processData()" class="w-full py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl transition-all shadow-xl shadow-cyan-500/10 active:scale-95 text-lg italic uppercase">
+                            SAVE PERFORMANCE
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right: Display Stats -->
+            <div class="glass-card p-8 flex flex-col items-center justify-between text-center">
+                <div class="w-full">
+                    <h3 class="text-[10px] font-black text-slate-500 uppercase mb-12 tracking-[0.3em]">Efficiency Overview</h3>
+                    <div class="space-y-16">
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Accumulated Points</p>
+                            <h4 id="stat-p" class="text-7xl font-black text-white stat-glow">0</h4>
+                        </div>
+                        <div>
+                            <p class="text-xs font-bold text-slate-400 uppercase tracking-widest mb-2">Money Saved</p>
+                            <div class="flex items-center justify-center gap-3">
+                                <h4 id="stat-s" class="text-6xl font-black text-emerald-400">0.00</h4>
+                                <span class="text-xl font-bold text-slate-600 italic">฿</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                <div class="w-full mt-12 bg-slate-950/40 border border-slate-800/50 rounded-3xl p-6">
+                    <p class="text-[10px] font-black text-slate-500 uppercase mb-2 tracking-widest">Upcoming Reminder</p>
+                    <p id="reminder-display" class="text-2xl font-black text-cyan-400 font-mono">18:00</p>
+                </div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- MODALS -->
+
+    <!-- ACHIEVEMENT MODAL (New Category Logic) -->
+    <div id="achievement-modal" class="modal-overlay" onclick="closeModal('achievement-modal')">
+        <div class="glass-card p-8 w-full max-w-lg max-h-[85vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <div class="flex justify-between items-center mb-8 sticky top-0 bg-slate-900/90 backdrop-blur-md py-2 z-10">
+                <h2 class="text-2xl font-black italic uppercase">Achievements</h2>
+                <button onclick="closeModal('achievement-modal')" class="text-slate-500 hover:text-white">✕</button>
+            </div>
+
+            <!-- วิถีผู้พิทักษ์ (Way of the Guardian) -->
+            <div class="mb-10">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-black text-amber-500 uppercase tracking-widest flex items-center gap-2">
+                        <span class="text-xl">🌟</span> วิถีผู้พิทักษ์
+                    </h3>
+                    <span class="text-[10px] text-amber-500 font-bold bg-amber-500/10 px-2 py-1 rounded">LIGHT</span>
+                </div>
+                <div id="guardian-list" class="space-y-4">
+                    <!-- JS Render -->
+                </div>
+            </div>
+
+            <!-- รอยร้าวในมิติพลังงาน (Rift in Energy Dimension) -->
+            <div class="mb-4">
+                <div class="flex items-center justify-between mb-4">
+                    <h3 class="text-xs font-black text-purple-500 uppercase tracking-widest flex items-center gap-2">
+                        <span class="text-xl">🌪️</span> รอยร้าวในมิติพลังงาน
+                    </h3>
+                    <span class="text-[10px] text-purple-500 font-bold bg-purple-500/10 px-2 py-1 rounded">VOID</span>
+                </div>
+                <div id="rift-list" class="space-y-4">
+                    <!-- JS Render -->
+                </div>
+            </div>
+            
+            <button onclick="closeModal('achievement-modal')" class="w-full py-4 bg-slate-800 hover:bg-slate-700 font-bold rounded-2xl mt-4 text-sm uppercase transition-all">Close Dashboard</button>
+        </div>
+    </div>
+    
+    <!-- Notification Config -->
+    <div id="config-modal" class="modal-overlay" onclick="closeModal('config-modal')">
+        <div class="glass-card p-10 w-full max-w-sm" onclick="event.stopPropagation()">
+            <div class="text-center mb-8">
+                <div class="text-4xl mb-2">🔔</div>
+                <h2 class="text-2xl font-black italic uppercase">Alert Config</h2>
+                <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Set your daily reminder</p>
+            </div>
+            <div class="space-y-8">
+                <div class="space-y-3">
+                    <label class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Target Time</label>
+                    <input type="time" id="config-time" class="w-full bg-slate-900 border border-slate-800 p-5 rounded-3xl text-4xl text-cyan-400 text-center font-mono focus:border-cyan-500 outline-none shadow-inner">
+                </div>
+                <div class="flex items-center gap-4 p-4 bg-slate-950/50 rounded-2xl border border-slate-800">
+                    <input type="checkbox" id="push-active" checked class="w-6 h-6 accent-cyan-500 rounded-lg">
+                    <label for="push-active" class="text-sm text-slate-300 font-bold">Enable System Alerts</label>
+                </div>
+                <button onclick="saveNotificationSettings()" class="w-full py-5 bg-cyan-500 hover:bg-cyan-400 text-slate-950 font-black rounded-2xl transition-all shadow-xl text-lg italic uppercase">
+                    CONFIRM SETTINGS
+                </button>
+                <button onclick="closeModal('config-modal')" class="w-full text-slate-500 text-[10px] font-black uppercase tracking-[0.2em] hover:text-white transition-colors">Dismiss</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Rank & Tiers Modals -->
+    <div id="rank-modal" class="modal-overlay" onclick="closeModal('rank-modal')">
+        <div class="glass-card p-8 w-full max-w-md" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-black italic mb-8 border-b border-slate-800 pb-4">🏆 RANKING</h2>
+            <div class="space-y-4" id="rank-list-content"></div>
+            <button onclick="closeModal('rank-modal')" class="w-full py-4 bg-slate-800 font-bold rounded-2xl mt-8 text-sm uppercase">Close</button>
+        </div>
+    </div>
+
+    <div id="tiers-modal" class="modal-overlay" onclick="closeModal('tiers-modal')">
+        <div class="glass-card p-8 w-full max-w-md max-h-[80vh] overflow-y-auto" onclick="event.stopPropagation()">
+            <h2 class="text-2xl font-black italic mb-8">📊 TIERS</h2>
+            <div class="space-y-4" id="tier-list-content"></div>
+            <button onclick="closeModal('tiers-modal')" class="w-full py-4 bg-slate-800 font-bold rounded-2xl mt-8 text-sm uppercase">Close</button>
         </div>
     </div>
 
     <script>
-        const MIN_UNIT_PRICE = 3.99;
-        let historyData = [];
-        let ecoPoints = 0;
-        let totalSavings = 0;
+        const TIERS = [
+            { lv: 50, name: "Carbon Hero 🛡️", desc: "กอบกู้โลกในระดับตำนาน" },
+            { lv: 20, name: "Solar King 👑", desc: "ราชาพลังงานแสงอาทิตย์" },
+            { lv: 10, name: "Energy Master ⚡", desc: "เชี่ยวชาญการประหยัดไฟ" },
+            { lv: 5, name: "Eco Scout 🔋", desc: "นักสำรวจรักษ์โลก" },
+            { lv: 1, name: "Newbie 🍼", desc: "ผู้เริ่มใช้งานใหม่" }
+        ];
 
-        // รายชื่อ Achievement ตามที่น้องเลือก
-        const achievements = {
-            good: [
-                { id: 'g1', name: "จุดกำเนิดแสงศักดิ์สิทธิ์", desc: "เริ่มบันทึกข้อมูลครั้งแรก", icon: "✨", unlocked: false },
-                { id: 'g2', name: "ผู้บัญชาการสายฟ้า", desc: "ประหยัดไฟสำเร็จ 3 ครั้งติด", icon: "⚡", unlocked: false },
-                { id: 'g3', name: "วิศวกรแห่งอนาคต", desc: "ใช้ไฟใกล้เคียงเป้าหมาย (±5%)", icon: "📐", unlocked: false },
-                { id: 'g4', name: "เกราะป้องกันโลก", desc: "ประหยัดเงินรวมครบ 100 บาท", icon: "🛡️", unlocked: false },
-                { id: 'g5', name: "หัวใจนิรันดร์", desc: "บันทึกข้อมูลครบ 7 รายการ", icon: "💎", unlocked: false }
-            ],
-            bad: [
-                { id: 'b1', name: "เสียงเรียกจากหลุมดำ", desc: "ใช้ไฟเกินเป้าหมายครั้งแรก", icon: "🕳️", unlocked: false },
-                { id: 'b2', name: "กระแสไฟที่ผิดเพี้ยน", desc: "ใช้ไฟเกินเป้าหมาย 2 ครั้งติด", icon: "⚠️", unlocked: false },
-                { id: 'b3', name: "บันทึกของผู้หลงทาง", desc: "ใช้ไฟเกินเป้าหมาย 2 เท่า", icon: "📖", unlocked: false },
-                { id: 'b4', name: "เงากลืนกินแสง", desc: "เสียเงินจากการใช้เกินรวม 50 บาท", icon: "🌑", unlocked: false },
-                { id: 'b5', name: "เศษเสี้ยวที่สูญสลาย", desc: "ใช้เกินเป้าหมายสะสม 10 ครั้ง", icon: "💨", unlocked: false }
-            ]
+        let state = {
+            lv: 1, exp: 0, maxExp: 100, points: 0, savings: 0,
+            reminderTime: "18:00", reminderActive: true,
+            achievements: {
+                guardian: [
+                    { id: 'g1', title: 'แสงแรกแห่งสติ', current: 0, target: 1, unit: '', color: 'guard' },
+                    { id: 'g2', title: 'ป้อมปราการประหยัด', current: 0, target: 10, unit: ' วัน', color: 'guard' },
+                    { id: 'g3', title: 'ผู้พิทักษ์แห่งอนาคต', current: 0, target: 100, unit: ' pt', color: 'guard' }
+                ],
+                rift: [
+                    { id: 'r1', title: 'ผู้สยบพลังงานรั่วไหล', current: 0, target: 100, unit: '฿', color: 'rift' },
+                    { id: 'r2', title: 'มิติลี้ลับแห่ง Eco', current: 0, target: 5, unit: ' ครั้ง', color: 'rift' },
+                    { id: 'r3', title: 'ผู้ปรับจูนรอยร้าว', current: 0, target: 1, unit: '', color: 'rift' }
+                ]
+            }
         };
 
-        function initAchievements() {
-            renderGrid('good');
-            renderGrid('bad');
+        function showNotification(msg, icon = '🔔') {
+            const el = document.getElementById('global-alert');
+            document.getElementById('alert-msg').innerText = msg;
+            document.getElementById('alert-icon').innerText = icon;
+            el.classList.add('active');
+            setTimeout(() => el.classList.remove('active'), 4000);
         }
 
-        function renderGrid(type) {
-            const container = document.getElementById(`grid-${type}`);
-            container.innerHTML = achievements[type].map(ach => `
-                <div id="${ach.id}" class="achievement-card card p-4 flex flex-col items-center text-center border-2 border-transparent">
-                    <span class="text-3xl mb-2">${ach.icon}</span>
-                    <h3 class="text-xs font-bold text-white mb-1">${ach.name}</h3>
-                    <p class="text-[10px] text-gray-400 leading-tight">${ach.desc}</p>
+        function openModal(id) {
+            document.getElementById(id).style.display = 'flex';
+            if(id === 'rank-modal') renderLeaderboard();
+            if(id === 'tiers-modal') renderTiers();
+            if(id === 'achievement-modal') updateUI();
+        }
+
+        function closeModal(id) { document.getElementById(id).style.display = 'none'; }
+
+        function saveNotificationSettings() {
+            state.reminderTime = document.getElementById('config-time').value;
+            state.reminderActive = document.getElementById('push-active').checked;
+            updateUI();
+            showNotification("มิติจดจำเวลาแจ้งเตือนใหม่แล้ว", "🌀");
+            closeModal('config-modal');
+        }
+
+        function processData() {
+            const usage = parseFloat(document.getElementById('in-usage').value);
+            const limit = parseFloat(document.getElementById('in-limit').value);
+            if (isNaN(usage) || usage <= 0) { showNotification("กรุณาระบุหน่วยไฟ!", "⚠️"); return; }
+
+            const diff = limit - usage;
+            if (diff >= 0) {
+                state.points += 50; state.savings += (diff * 4.42);
+                addExp(40);
+                
+                // Achievement Progression
+                state.achievements.guardian[0].current = 1;
+                state.achievements.guardian[1].current = Math.min(10, state.achievements.guardian[1].current + 1);
+                state.achievements.guardian[2].current = Math.min(100, state.points);
+                
+                state.achievements.rift[0].current = Math.min(100, Math.floor(state.savings));
+                if(diff > (limit/2)) state.achievements.rift[1].current = Math.min(5, state.achievements.rift[1].current + 1);
+                state.achievements.rift[2].current = 1;
+
+                showNotification(`วิถีผู้พิทักษ์แข็งแกร่งขึ้น! ประหยัดไปได้ ${diff.toFixed(2)}`, "🌟");
+            } else {
+                addExp(10);
+                showNotification("พลังงานรั่วไหล! พยายามใหม่อีกครั้ง", "🌪️");
+            }
+            document.getElementById('in-usage').value = "";
+            updateUI();
+        }
+
+        function addExp(val) {
+            state.exp += val;
+            if (state.exp >= state.maxExp) {
+                state.lv++; state.exp -= state.maxExp;
+                state.maxExp = Math.floor(state.maxExp * 1.5);
+                showNotification("LEVEL UP!", "🆙");
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('u-lv').innerText = state.lv;
+            document.getElementById('u-exp-txt').innerText = `${state.exp}/${state.maxExp} XP`;
+            document.getElementById('u-exp-bar').style.width = (state.exp / state.maxExp * 100) + '%';
+            document.getElementById('stat-p').innerText = Math.floor(state.points);
+            document.getElementById('stat-s').innerText = state.savings.toFixed(2);
+            document.getElementById('reminder-display').innerText = state.reminderActive ? state.reminderTime : "OFF";
+            
+            const currentTier = TIERS.find(t => state.lv >= t.lv) || TIERS[TIERS.length - 1];
+            document.getElementById('u-rank').innerText = currentTier.name;
+
+            const renderItems = (items, targetId) => {
+                document.getElementById(targetId).innerHTML = items.map(item => {
+                    const percent = Math.min(100, (item.current / item.target) * 100);
+                    const isDone = item.current >= item.target;
+                    return `
+                        <div class="p-4 rounded-2xl bg-slate-950/40 border border-slate-800 transition-all ${isDone ? 'border-l-4 border-l-' + (item.color === 'guard' ? 'amber-500' : 'purple-500') + ' ring-1 ring-' + (item.color === 'guard' ? 'amber-500/20' : 'purple-500/20') : 'opacity-70'}">
+                            <div class="flex justify-between items-center mb-1">
+                                <span class="text-[11px] font-black text-slate-200 uppercase">${item.title}</span>
+                                <span class="text-[9px] font-mono text-slate-500 font-bold">${item.current}/${item.target}${item.unit}</span>
+                            </div>
+                            <div class="progress-sub-bar">
+                                <div class="progress-fill-${item.color}" style="width: ${percent}%"></div>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+            };
+
+            renderItems(state.achievements.guardian, 'guardian-list');
+            renderItems(state.achievements.rift, 'rift-list');
+        }
+
+        function renderLeaderboard() {
+            const players = [{ name: "Elite_Guardian", pts: 4500 }, { name: "Eco_Pioneer (You)", pts: state.points, me: true }, { name: "RiftWalker", pts: 1200 }].sort((a,b) => b.pts - a.pts);
+            document.getElementById('rank-list-content').innerHTML = players.map((p, i) => `
+                <div class="flex items-center justify-between p-5 rounded-2xl ${p.me ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-slate-900/50 border border-slate-800'}">
+                    <span class="font-bold">#${i+1} ${p.name}</span>
+                    <span class="font-mono font-bold text-xs">${p.pts} PTS</span>
                 </div>
             `).join('');
         }
 
-        function switchTab(type) {
-            document.getElementById('grid-good').classList.toggle('hidden', type !== 'good');
-            document.getElementById('grid-bad').classList.toggle('hidden', type !== 'bad');
-            
-            const btnGood = document.getElementById('tab-good');
-            const btnBad = document.getElementById('tab-bad');
+        function renderTiers() {
+            document.getElementById('tier-list-content').innerHTML = TIERS.map(t => `
+                <div class="p-5 rounded-2xl border border-slate-800 bg-slate-900/50 flex justify-between items-center">
+                    <div><h4 class="font-black text-sm">${t.name}</h4><p class="text-[10px] text-slate-500">${t.desc}</p></div>
+                    <span class="text-[10px] bg-slate-800 px-3 py-1 rounded-full">LV ${t.lv}+</span>
+                </div>
+            `).join('');
+        }
 
-            if(type === 'good') {
-                btnGood.className = 'tab-btn pb-2 font-semibold tab-active-good';
-                btnBad.className = 'tab-btn pb-2 font-semibold text-gray-500 hover:text-red-400';
-            } else {
-                btnGood.className = 'tab-btn pb-2 font-semibold text-gray-500 hover:text-green-400';
-                btnBad.className = 'tab-btn pb-2 font-semibold tab-active-bad';
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('clock').innerText = now.toLocaleTimeString('th-TH', { hour12: false });
+            const currentTimeStr = now.toTimeString().substring(0, 5);
+            if(state.reminderActive && currentTimeStr === state.reminderTime && now.getSeconds() === 0) {
+                showNotification("ถึงเวลาปกป้องมิติพลังงานแล้ว!", "⏰");
             }
-        }
+        }, 1000);
 
-        function manualSave() {
-            const limit = parseFloat(document.getElementById('limit-input').value);
-            const used = parseFloat(document.getElementById('used-input').value);
-            if(isNaN(limit) || isNaN(used)) return;
-
-            const diff = limit - used;
-            const money = diff * MIN_UNIT_PRICE;
-            const percent = (used / limit) * 100;
-            const record = { limit, used, money, percent };
-            
-            historyData.push(record);
-            updateDashboard(record);
-            checkAchievementsLogic(record);
-        }
-
-        function updateDashboard(data) {
-            totalSavings += data.money;
-            const ts = document.getElementById('total-savings');
-            ts.innerText = `${totalSavings.toFixed(2)} ฿`;
-            ts.className = totalSavings >= 0 ? "text-xl font-bold text-green-400" : "text-xl font-bold text-red-400";
-
-            const box = document.getElementById('analysis-box');
-            box.classList.remove('hidden');
-            document.getElementById('bar-fill').style.width = Math.min(data.percent, 100) + "%";
-            document.getElementById('analysis-percent').innerText = Math.round(data.percent) + "%";
-            document.getElementById('bar-fill').className = `progress-bar h-3 rounded-full ${data.percent > 100 ? 'bg-red-500' : 'bg-green-500'}`;
-            
-            document.getElementById('analysis-text').innerHTML = data.money >= 0 
-                ? `สำเร็จ! ประหยัดไปได้ <span class="text-green-400">${data.money.toFixed(2)} บาท</span>`
-                : `คำเตือน! ใช้เกินไป <span class="text-red-400">${Math.abs(data.money).toFixed(2)} บาท</span>`;
-        }
-
-        function checkAchievementsLogic(record) {
-            // ปลดล็อคอันแรกเสมอเมื่อเริ่ม
-            unlock('g1');
-
-            // เงื่อนไขหมวดไม่ดี
-            if(record.money < 0) unlock('b1');
-            if(record.used >= record.limit * 2) unlock('b3');
-            
-            // เงื่อนไขหมวดดี
-            if(historyData.length >= 3 && historyData.slice(-3).every(r => r.money >= 0)) unlock('g2');
-            if(totalSavings >= 100) unlock('g4');
-            if(historyData.length >= 7) unlock('g5');
-            
-            // วิศวกรแห่งอนาคต (ใช้ไฟต่างจากเป้าไม่เกิน 5%)
-            if(record.percent >= 95 && record.percent <= 105) unlock('g3');
-        }
-
-        function unlock(id) {
-            const allAch = [...achievements.good, ...achievements.bad];
-            const ach = allAch.find(a => a.id === id);
-            
-            if(ach && !ach.unlocked) {
-                ach.unlocked = true;
-                const el = document.getElementById(id);
-                if(el) {
-                    el.classList.add('achievement-unlocked', 'animate-unlock');
-                    ecoPoints += 100;
-                    document.getElementById('eco-points').innerText = ecoPoints;
-                    showToast(ach.name);
-                }
-            }
-        }
-
-        function showToast(name) {
-            const t = document.getElementById('toast');
-            document.getElementById('toast-name').innerText = name;
-            t.classList.remove('translate-y-32');
-            setTimeout(() => t.classList.add('translate-y-32'), 3000);
-        }
-
-        window.onload = initAchievements;
+        updateUI();
     </script>
 </body>
 </html>
